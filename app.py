@@ -42,9 +42,16 @@ def is_valid_youtube_url(url: str) -> bool:
 
 
 def base_ydl_opts() -> dict:
-    opts = {"quiet": True, "noplaylist": True}
+    opts = {"quiet": True, "noplaylist": True, "remote_components": ["ejs:github"]}
     if os.path.exists(COOKIES_FILE):
+        # Manual override: drop a cookies.txt in the project folder to use it
+        # instead of reading Safari's cookie store directly.
         opts["cookiefile"] = COOKIES_FILE
+    else:
+        # Reads Safari's cookies live, so it's never stale like an exported
+        # file. Requires Full Disk Access granted to this app in
+        # System Settings > Privacy & Security.
+        opts["cookiesfrombrowser"] = ("safari",)
     if os.path.exists(NODE_BIN):
         # Needed both for yt-dlp's own JS runtime (signature decryption) and,
         # when available, the PO Token provider below.
