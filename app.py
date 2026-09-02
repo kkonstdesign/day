@@ -103,12 +103,21 @@ def download():
     tmp_dir = tempfile.mkdtemp(prefix="ytdl_")
     outtmpl = os.path.join(tmp_dir, "%(title).150s.%(ext)s")
 
+    # Prefer H.264 (avc1): YouTube's "best" mp4 is often AV1, which QuickTime
+    # (and many other players, especially on Intel Macs) can't play at all.
     if FFMPEG_AVAILABLE:
-        video_format = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
+        video_format = (
+            "bestvideo[vcodec^=avc1][ext=mp4]+bestaudio[ext=m4a]"
+            "/best[vcodec^=avc1][ext=mp4]"
+            "/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
+        )
     else:
         # No ffmpeg to mux separate video+audio streams, so stick to formats
         # that come as a single already-merged file.
-        video_format = "best[protocol!*=m3u8][ext=mp4]/best[protocol!*=m3u8]/best"
+        video_format = (
+            "best[vcodec^=avc1][protocol!*=m3u8][ext=mp4]"
+            "/best[protocol!*=m3u8][ext=mp4]/best[protocol!*=m3u8]/best"
+        )
 
     ydl_opts = {
         **base_ydl_opts(),
