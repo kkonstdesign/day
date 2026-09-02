@@ -3,6 +3,10 @@ import re
 import shutil
 import tempfile
 
+import certifi
+
+os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+
 from flask import Flask, render_template, request, send_file, jsonify
 
 import yt_dlp
@@ -41,8 +45,11 @@ def base_ydl_opts() -> dict:
     opts = {"quiet": True, "noplaylist": True}
     if os.path.exists(COOKIES_FILE):
         opts["cookiefile"] = COOKIES_FILE
-    if POT_PROVIDER_READY:
+    if os.path.exists(NODE_BIN):
+        # Needed both for yt-dlp's own JS runtime (signature decryption) and,
+        # when available, the PO Token provider below.
         opts["js_runtimes"] = {"node": {"path": NODE_BIN}}
+    if POT_PROVIDER_READY:
         opts["extractor_args"] = {
             "youtubepot-bgutilscript": {"server_home": [BGUTIL_SERVER_HOME]}
         }
