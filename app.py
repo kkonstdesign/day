@@ -9,11 +9,28 @@ import yt_dlp
 
 app = Flask(__name__)
 
+BASE_DIR = os.path.dirname(__file__)
+
 YOUTUBE_URL_RE = re.compile(
     r"^https?://(www\.|m\.)?(youtube\.com/|youtu\.be/)"
 )
 
-COOKIES_FILE = os.path.join(os.path.dirname(__file__), "cookies.txt")
+COOKIES_FILE = os.path.join(BASE_DIR, "cookies.txt")
+
+# Node.js runtime used only for the PO Token provider below (installed via nodeenv,
+# see README "PO Token" section) — not required for the app itself.
+NODE_BIN = os.path.join(BASE_DIR, ".nodeenv", "bin", "node")
+
+# PO Token provider (bgutil-ytdlp-pot-provider): works around YouTube's SABR /
+# "Sign in to confirm you're not a bot" block on the actual video download.
+# Requires running, once:
+#   cd .bgutil-provider/server && npm install && npm run build
+# See README for details. The app falls back gracefully if it's not built yet.
+BGUTIL_SERVER_HOME = os.path.join(BASE_DIR, ".bgutil-provider", "server")
+BGUTIL_SCRIPT = os.path.join(BGUTIL_SERVER_HOME, "build", "generate_once.js")
+
+FFMPEG_AVAILABLE = shutil.which("ffmpeg") is not None
+POT_PROVIDER_READY = os.path.exists(BGUTIL_SCRIPT) and os.path.exists(NODE_BIN)
 
 
 def is_valid_youtube_url(url: str) -> bool:
@@ -24,6 +41,11 @@ def base_ydl_opts() -> dict:
     opts = {"quiet": True, "noplaylist": True}
     if os.path.exists(COOKIES_FILE):
         opts["cookiefile"] = COOKIES_FILE
+    if POT_PROVIDER_READY:
+        opts["js_runtimes"] = {"node": {"path": NODE_BIN}}
+        opts["extractor_args"] = {
+            "youtubepot-bgutilscript": {"server_home": [BGUTIL_SERVER_HOME]}
+        }
     return opts
 
 
@@ -67,10 +89,17 @@ def download():
     tmp_dir = tempfile.mkdtemp(prefix="ytdl_")
     outtmpl = os.path.join(tmp_dir, "%(title).150s.%(ext)s")
 
+    if FFMPEG_AVAILABLE:
+        video_format = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
+    else:
+        # No ffmpeg to mux separate video+audio streams, so stick to formats
+        # that come as a single already-merged file.
+        video_format = "best[protocol!*=m3u8][ext=mp4]/best[protocol!*=m3u8]/best"
+
     ydl_opts = {
         **base_ydl_opts(),
         "outtmpl": outtmpl,
-        "format": "best[ext=mp4]/best",
+        "format": video_format,
         "restrictfilenames": True,
     }
 

@@ -5,3 +5,5 @@ venv/
 downloads/
 cookies.txt
 .DS_Store
+.nodeenv/
+.bgutil-provider/
