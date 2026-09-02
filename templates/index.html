@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Downloader</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="card">
+    <h1>Скачать видео с YouTube</h1>
+    <p class="subtitle">Вставьте ссылку на видео и нажмите «Скачать»</p>
+
+    <div class="input-row">
+      <input type="text" id="url-input" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off">
+      <button id="download-btn">Скачать</button>
+    </div>
+
+    <div id="preview" class="preview hidden">
+      <img id="preview-thumb" src="" alt="">
+      <div class="preview-info">
+        <div id="preview-title" class="preview-title"></div>
+        <div id="preview-meta" class="preview-meta"></div>
+      </div>
+    </div>
+
+    <div id="status" class="status"></div>
+  </main>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
