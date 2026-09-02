@@ -1,4 +1,5 @@
 import os
+import platform
 import re
 import shutil
 import tempfile
@@ -21,9 +22,23 @@ YOUTUBE_URL_RE = re.compile(
 
 COOKIES_FILE = os.path.join(BASE_DIR, "cookies.txt")
 
-# Node.js runtime used only for the PO Token provider below (installed via nodeenv,
-# see README "PO Token" section) — not required for the app itself.
-NODE_BIN = os.path.join(BASE_DIR, ".nodeenv", "bin", "node")
+# Which browser to read cookies from live (no manual export needed). Safari
+# is the sensible default on macOS; Chrome works everywhere, including
+# Windows/Linux, and needs no extra OS permission there. Override with the
+# COOKIES_BROWSER env var (e.g. "chrome", "edge", "firefox") if you use a
+# different one.
+DEFAULT_COOKIES_BROWSER = "safari" if platform.system() == "Darwin" else "chrome"
+COOKIES_BROWSER = os.environ.get("COOKIES_BROWSER", DEFAULT_COOKIES_BROWSER)
+
+# Node.js runtime, used both for yt-dlp's own JS challenge solving and the PO
+# Token provider below. Prefers a project-local install (via nodeenv, see
+# README), falling back to a system-wide Node.js install (e.g. from
+# nodejs.org on Windows) if that's what's available.
+_LOCAL_NODE_BIN = os.path.join(
+    BASE_DIR, ".nodeenv", "Scripts" if platform.system() == "Windows" else "bin",
+    "node.exe" if platform.system() == "Windows" else "node",
+)
+NODE_BIN = _LOCAL_NODE_BIN if os.path.exists(_LOCAL_NODE_BIN) else (shutil.which("node") or _LOCAL_NODE_BIN)
 
 # PO Token provider (bgutil-ytdlp-pot-provider): works around YouTube's SABR /
 # "Sign in to confirm you're not a bot" block on the actual video download.
@@ -48,10 +63,10 @@ def base_ydl_opts() -> dict:
         # instead of reading Safari's cookie store directly.
         opts["cookiefile"] = COOKIES_FILE
     else:
-        # Reads Safari's cookies live, so it's never stale like an exported
-        # file. Requires Full Disk Access granted to this app in
-        # System Settings > Privacy & Security.
-        opts["cookiesfrombrowser"] = ("safari",)
+        # Reads cookies live from the browser, so it's never stale like an
+        # exported file. On macOS with Safari, this requires Full Disk
+        # Access granted to this app in System Settings > Privacy & Security.
+        opts["cookiesfrombrowser"] = (COOKIES_BROWSER,)
     if os.path.exists(NODE_BIN):
         # Needed both for yt-dlp's own JS runtime (signature decryption) and,
         # when available, the PO Token provider below.
